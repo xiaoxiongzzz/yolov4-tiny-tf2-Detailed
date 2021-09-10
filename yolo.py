@@ -73,4 +73,4 @@ class YOLO(object):
         num_anchors = len(self.anchors)
         num_classes = len(self.class_names)
         #   载入模型
-        self.yolo_model =yolo_body(Input(shape=(None,None,3)), num_anchors//2, num_classes, self.phi)
+        self.yolo_model =yolo_body(Input(shape=(None,None,3)), num_anchors//2, num_classes, self.phi)# 返回输入和两个预测头P4 P5
