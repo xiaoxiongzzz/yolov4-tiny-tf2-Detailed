@@ -16,10 +16,10 @@ class YOLO(object):
         #   phi = 2为CBAM
         #   phi = 3为ECA
         # -------------------------------#
-        "phi":0,
+        "phi": 0,
         "score":0.5,
         "iou":0.3,
-        "max_boxes":100,
+        "max_boxes": 100,
         "model_image_size":(416,416),
         #---------------------------------------------------------------------#
         #   该变量用于控制是否使用letterbox_image对输入图像进行不失真的resize，
@@ -55,6 +55,7 @@ class YOLO(object):
             class_names = f.readlines()
         class_names=[c.strip() for c in class_names]
         return class_names
+
     # 获取anchors
     def _get_anchors(self):
         anchors_path =os.path.expanduser(self.anchors_path)
@@ -63,6 +64,7 @@ class YOLO(object):
         anchors = [float(x) for x in anchors.split(',')] # 转换为列表并依次读取anchors
 
         return np.array(anchors).reshape(-1, 2)
+
     # 初始化模型
     def generate(self):
         model_path =os.path.expanduser(self.model_path)
@@ -73,4 +75,9 @@ class YOLO(object):
         num_anchors = len(self.anchors)
         num_classes = len(self.class_names)
         #   载入模型
-        self.yolo_model =yolo_body(Input(shape=(None,None,3)), num_anchors//2, num_classes, self.phi)# 返回输入和两个预测头P4 P5
+        # 返回输入和两个预测头P4 P5
+        self.yolo_model = yolo_body(Input(shape=(None,None,3)), num_anchors//2, num_classes, self.phi)
+        print(self.yolo_model)
+        self.yolo_model.load_weights(self.model_path)
+        self.yolo_model.save_weights(self.model_path)
+        print('{} model, anchors, and classes loaded.'.format(model_path))

@@ -29,6 +29,7 @@ def darknet_body(x):
     x = DarknetConv2D_BN_Leaky(512, (3, 3))(x)
 
     feat2 = x
+    # print(feat1.shape, feat2.shape)
     return feat1, feat2
 
 #---------------------------------------------------#
@@ -53,9 +54,9 @@ def DarknetConv2D_BN_Leaky(*args,**kwargs):
 def DarknetConv2D(*args, **kwargs):
     #darknet_conv_kwargs = {'kernel_regularizer': l2(5e-4)} #  L2正则化 避免过拟合，惩罚损失函数。实际效果不太好，
     darknet_conv_kwargs = {'kernel_initializer' : RandomNormal(stddev=0.02)}# 标准差为0.02的随机正态分布初始化
-    darknet_conv_kwargs['padding'] = 'valid' if kwargs.get('strides')==(2,2) else 'same' # 步长为2，2为valid,否则为same。
+    darknet_conv_kwargs['padding'] = 'valid' if kwargs.get('strides')==(2, 2) else 'same' # 步长为2，2为valid,否则为same。
     darknet_conv_kwargs.update(kwargs)# update
-    return Conv2D(*args, **darknet_conv_kwargs)#相当于对Conv2D进行了修改。但是为了不影响，所以加了wraps。
+    return Conv2D(*args, **darknet_conv_kwargs)# 相当于对Conv2D进行了修改。但是为了不影响，所以加了wraps。
 
 #---------------------------------------------------#
 #   CSPdarknet_tiny的结构块
@@ -88,8 +89,6 @@ def resblock_body(x,num_filters):#filters 为输出卷积滤波器，也就是�
     x = MaxPooling2D(pool_size=[2, 2], )(x)
     # x为主干，feat为小残差边
     return x, feat
-
-
 
 
 
