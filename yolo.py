@@ -2,8 +2,9 @@
 import tensorflow as tf
 import numpy as np
 import os
-from nets.yolo4_tiny import yolo_body
+from nets.yolo4_tiny import yolo_body,yolo_eval
 from tensorflow.keras.layers import Input, Lambda
+import colorsys
 class YOLO(object):
     _defaults = {
         "model_path"       :'model_data/yolov4_tiny_weights_coco.h5',
@@ -78,6 +79,33 @@ class YOLO(object):
         # 返回输入和两个预测头P4 P5
         self.yolo_model = yolo_body(Input(shape=(None,None,3)), num_anchors//2, num_classes, self.phi)
         print(self.yolo_model)
-        self.yolo_model.load_weights(self.model_path)
-        self.yolo_model.save_weights(self.model_path)
+        self.yolo_model.load_weights(self.model_path) # 读取模型
+        self.yolo_model.save_weights(self.model_path) # 保存模型
         print('{} model, anchors, and classes loaded.'.format(model_path))
+
+    # 画框设置不同的颜色
+        hsv_tuples = [(x/len(self.class_names),1.,1.)
+                     for x in range(len(self.class_names))]# 设置类别个数的3通道颜色元组,hsv:色度 饱和度
+
+        self.colors = list(map(lambda x: colorsys.hsv_to_rgb(*x),hsv_tuples))# hsv转换成RGB的颜色格式 三个数值均小于1大于0.0
+        self.colors = list(
+            map(lambda x: (int(x[0] * 255), int(x[1] * 255), int(x[2] * 255)),
+                self.colors))# 为颜色乘上255通道，以展示颜色。
+
+    # 打乱颜色
+        np.random.seed(10101) # 随机数种子
+        np.random.shuffle(self.colors)# 打乱颜色
+        np.random.seed(None)
+
+        # ---------------------------------------------------------#
+        #   在yolo_eval函数中，我们会对预测结果进行后处理
+        #   后处理的内容包括，解码、非极大抑制、门限筛选等
+        # ---------------------------------------------------------#
+        self.input_image_shape = Input([2,],batch_size=1)# 模型输入维度为2，batch_size为1
+        inputs = input(*self.yolo_model.output,self.input_image_shape)# 定义输出维度与输入一致
+        # 对输出的图片进行后处理。
+        outputs = Lambda(yolo_eval, output_shape=(1,), name='yolo_eval',
+                         arguments={'anchors': self.anchors, 'num_classes': len(self.class_names),
+                                    'image_shape': self.model_image_size,
+                                    'score_threshold': self.score, 'eager': True, 'max_boxes': self.max_boxes,
+                                    'letterbox_image': self.letterbox_image})(inputs)

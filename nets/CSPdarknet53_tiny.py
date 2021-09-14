@@ -90,8 +90,6 @@ def resblock_body(x,num_filters):#filters 为输出卷积滤波器，也就是�
     # x为主干，feat为小残差边
     return x, feat
 
-
-
 # 切割通道数代码
 def route_group(input_layer,groups,group_id):
     # 对通道数进行分割，我们取用第二部分
