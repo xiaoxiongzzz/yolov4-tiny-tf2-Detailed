@@ -10,7 +10,7 @@ from yolo import YOLO
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 print(physical_devices)
 # 设置是否应为PhysicalDevice.第一块GPU，并且启用内存增长
-tf.config.experimental.set_memory_growth(physical_devices[0],True)
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 if __name__ =="__main__":
     yolo = YOLO()

@@ -52,7 +52,7 @@ def yolo_body(inputs,num_anchors,num_classes,phi = 0):
     # print(P4_output.shape,P5_output.shape)
     return Model(inputs, [P5_output, P4_output])
 
-# 网络预测后处理
+# 网络预测后处理 难点
 def yolo_eval(yolo_outputs,
               anchors,
               num_classes,
@@ -68,17 +68,17 @@ def yolo_eval(yolo_outputs,
         # 特征层的数量
         num_layers = len(yolo_outputs) - 1
     else:
-        #   获得特征层的数量，有效特征层的数量为3
+        #   获得特征层的数量，有效特征层的数量为2
         num_layers = len(yolo_outputs)
 
         #   13x13的特征层对应的anchor是[81,82], [135,169], [344,319]
         #   26x26的特征层对应的anchor是[23,27], [37,58], [81,82]
     anchor_mask = [[6, 7, 8], [3, 4, 5], [0, 1, 2]] if num_layers== 3 else [[3, 4, 5], [1, 2, 3]]
     #   这里获得的是输入图片的大小，一般是416x416
-    input_shape = K.shape(yolo_outputs[0])[1:3] * 32 # 难点   不懂这个【1：3】*32的意思，应该是2的次方
+    input_shape = K.shape(yolo_outputs[0])[1:3] * 32 # 首先根据模型返回的OUTPUT计算输入图片SHAPE
     boxes = []
     box_scores = []
-    #   对每个特征层进行处理
+    #   对每个特征层进行处理 重点
     for l in range(num_layers):
         _boxes, _box_scores = yolo_boxes_and_scores(yolo_outputs[l], anchors[anchor_mask[l]], num_classes, input_shape,
                                                     image_shape, letterbox_image)
@@ -116,7 +116,7 @@ def yolo_eval(yolo_outputs,
         #-----------------------------------------------------------#
         class_boxes = K.gather(class_boxes, nms_index)
         class_box_scores = K.gather(class_box_scores, nms_index)
-        classes = K.ones_like(class_box_scores, 'int32') * c
+        classes = K.ones_like(class_box_scores, 'int32') * c # 后面的80维度 one hot相乘
         boxes_.append(class_boxes)
         scores_.append(class_box_scores)
         classes_.append(classes)
@@ -208,17 +208,17 @@ def yolo_head(feats, anchors, num_classes, input_shape, calc_loss=False):
     num_anchors = len(anchors)
     feats = tf.convert_to_tensor(feats)# 将特征层转换成张量
     #   [1, 1, 1, num_anchors, 2]
-    anchors_tensor = K.reshape(K.constant(anchors),[1,1,1,num_anchors,2])
+    anchors_tensor = K.reshape(K.constant(anchors),[1, 1, 1,num_anchors,2])# 创建一个张量 这个是个代表anchor的张量
 
     # 获得x,y网格 难点，拉平两个x,y具体指什么没看懂。
     # (13,13,1,2)
-    grid_shape = K.shape(feats)[1:3] # 宽高
+    grid_shape = K.shape(feats)[1:3] # 特整层的大小，宽高 3个切片
     grid_y = K.tile(K.reshape(K.arange(0, stop=grid_shape[0]), [-1, 1, 1, 1]),
                     [1, grid_shape[1], 1, 1])
     grid_x = K.tile(K.reshape(K.arange(0, stop=grid_shape[1]), [1, -1, 1, 1]),
                     [grid_shape[0], 1, 1, 1])
 
-    grid = K.concatenate([grid_x, grid_y])
+    grid = K.concatenate([grid_x, grid_y]) # 叠加  就是grid_shape了。
     grid = K.cast(grid, K.dtype(feats))# 转换类型。
     #   将预测结果调整成(batch_size,13,13,3,85) 解码过程 先定义这么多容器
     #   85可拆分成4 + 1 + 80
@@ -229,7 +229,12 @@ def yolo_head(feats, anchors, num_classes, input_shape, calc_loss=False):
     #   将预测值调成真实值 难点：没看懂。
     #   box_xy对应框的中心点
     #   box_wh对应框的宽和高
-    # bounding box为offset的值  也就是针对每个网格的绝对坐标，这里转换成图片的绝对坐标 这里只是特整层、
+    # bounding box为offset的值  也就是针对每个网格的绝对坐标，这里转换成图片的绝对坐标 这里只是特整层、 重点  输出Box
+    # 起始点xy：将feats中xy的值，经过sigmoid归一化，再加上相应的grid的二元组，再除以网格边长，归一化；
+    # 宽高wh：将feats中wh的值，经过exp正值化，再乘以anchors_tensor的anchor
+    # box，再除以图片宽高，归一化；
+    # 框置信度box_confidence：将feats中confidence值，经过sigmoid归一化；
+    # 类别置信度box_class_probs：将feats中class_probs值，经过sigmoid归一化；
     box_xy = (K.sigmoid(feats[..., :2]) + grid) / K.cast(grid_shape[..., ::-1], K.dtype(feats))
     box_wh = K.exp(feats[..., 2:4]) * anchors_tensor / K.cast(input_shape[..., ::-1], K.dtype(feats))
     box_confidence = K.sigmoid(feats[..., 4:5])

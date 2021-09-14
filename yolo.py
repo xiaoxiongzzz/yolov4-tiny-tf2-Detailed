@@ -5,6 +5,8 @@ import os
 from nets.yolo4_tiny import yolo_body,yolo_eval
 from tensorflow.keras.layers import Input, Lambda
 import colorsys
+from tensorflow.keras.models import Model
+
 class YOLO(object):
     _defaults = {
         "model_path"       :'model_data/yolov4_tiny_weights_coco.h5',
@@ -101,11 +103,19 @@ class YOLO(object):
         #   在yolo_eval函数中，我们会对预测结果进行后处理
         #   后处理的内容包括，解码、非极大抑制、门限筛选等
         # ---------------------------------------------------------#
-        self.input_image_shape = Input([2,],batch_size=1)# 模型输入维度为2，batch_size为1
-        inputs = input(*self.yolo_model.output,self.input_image_shape)# 定义输出维度与输入一致
-        # 对输出的图片进行后处理。
+        self.input_image_shape = Input([2, ],batch_size=1)# 模型输入维度为2，batch_size为1
+        inputs = [*self.yolo_model.output, self.input_image_shape]# 定义输出维度与输入一致 这里读取了3个特征层，第一个为输出，2，3为输入
+        # 对输出的feature map进行后处理。
         outputs = Lambda(yolo_eval, output_shape=(1,), name='yolo_eval',
                          arguments={'anchors': self.anchors, 'num_classes': len(self.class_names),
                                     'image_shape': self.model_image_size,
                                     'score_threshold': self.score, 'eager': True, 'max_boxes': self.max_boxes,
                                     'letterbox_image': self.letterbox_image})(inputs)
+        self.yolo_model = Model([self.yolo_model.input, self.input_image_shape], outputs)
+
+    # @tf.function
+    # def get_pred(self, image_data, input_image_shape):
+    #     out_boxes, out_scores, out_classes = self.yolo_model([image_data, input_image_shape], training=False)
+    #     return out_boxes, out_scores, out_classes
+
+
