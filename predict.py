@@ -7,6 +7,7 @@ from PIL import Image
 import cv2
 import numpy as np
 from yolo import YOLO
+import time
 # 返回主机运行时可见的物理设备列表。
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 print(physical_devices)
@@ -55,3 +56,44 @@ if __name__ =="__main__":
             else:
                 r_image = yolo.detect_image(image)
                 r_image.show()
+
+    elif mode =="video":
+        capture = cv2.VideoCapture(video_path)
+        if video_save_path != "":
+            fourcc = cv2.VideoWriter_fourcc(*'XVID'),# 该参数是MPEG-4编码类型，文件名后缀为.avi
+            # #fourcc意为四字符代码（Four-Character Codes），顾名思义，该编码由四个字符组成,下面是VideoWriter_fourcc对象一些常用的参数，注意：字符顺序不能弄混
+            size = (int(capture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+            # 相当于一个容器 将每一帧插入并保存
+            out = cv2.VideoWriter(video_save_path, fourcc, video_fps, size)
+
+            fps = 0.0
+
+            while (True):
+                t1 = time.time()
+                # 读取某一帧
+                ref, frame = capture.read()
+                # 格式转变，BGRtoRGB
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                # 转变成Image
+                frame = Image.fromarray(np.uint8(frame))
+                # 进行检测
+                frame = np.array(yolo.detect_image(frame))
+                # RGBtoBGR满足opencv显示格式
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                # fps的计算公式，时间的倒数
+                fps = (fps + (1. / (time.time() - t1))) / 2
+                print("fps= %.2f" % (fps))
+                frame = cv2.putText(frame, "fps= %.2f" % (fps), (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+                cv2.imshow("video", frame)
+                c = cv2.waitKey(1) & 0xff
+                if video_save_path != "":
+                    out.write(frame)
+
+                if c == 27:
+                    capture.release()
+                    break
+            capture.release()
+            out.release()
+            cv2.destroyAllWindows()
+

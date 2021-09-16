@@ -193,7 +193,6 @@ class YOLO(object):
 
         return image
 
-
     # 预测函数，由于是采用图模式，只能写一次，所以多任务多预测的话不能用tf.function修饰符
     @tf.function
     def get_pred(self, image_data, input_image_shape):
