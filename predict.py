@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 from yolo import YOLO
 import time
+import os
 # 返回主机运行时可见的物理设备列表。
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 print(physical_devices)
@@ -34,17 +35,21 @@ if __name__ =="__main__":
     video_path      = 0
     video_save_path = ""
     video_fps       = 25.0
+    picture_save_path="./img"
 
     if mode =="predict":
-        '''
-               1、该代码无法直接进行批量预测，如果想要批量预测，可以利用os.listdir()遍历文件夹，利用Image.open打开图片文件进行预测。
-               具体流程可以参考get_dr_txt.py，在get_dr_txt.py即实现了遍历还实现了目标信息的保存。
+        '''     @xiaoxiongzzz
+               1、该代码我自己写了一个批量预测代码 mode为path predict，目标文件夹请自己进入代码修改，小白敲代码  
+               代码并不完善，如果可以请给个小星星给我的github。
+               
                2、如果想要进行检测完的图片的保存，利用r_image.save("img.jpg")即可保存，直接在predict.py里进行修改即可。 
                3、如果想要获得预测框的坐标，可以进入yolo.detect_image函数，在绘图部分读取top，left，bottom，right这四个值。
                4、如果想要利用预测框截取下目标，可以进入yolo.detect_image函数，在绘图部分利用获取到的top，left，bottom，right这四个值
                在原图上利用矩阵的方式进行截取。
                5、如果想要在预测图上写额外的字，比如检测到的特定目标的数量，可以进入yolo.detect_image函数，在绘图部分对predicted_class进行判断，
                比如判断if predicted_class == 'car': 即可判断当前目标是否为车，然后记录数量即可。利用draw.text即可写字。
+               @xiaoxiongzzz
+               6、这里我写了一个可以判断所有图里检测到的某类别的个数，如果需要可以留言我修改代码。
                '''
         while True:
             img = input('Input image filename:')
@@ -56,6 +61,28 @@ if __name__ =="__main__":
             else:
                 r_image = yolo.detect_image(image)
                 r_image.show()
+
+    if mode == "path predict":
+    # 批量预测
+        while True:
+            path = input('Input your path')
+            image_ids = os.listdir(path)
+            class_nums = 0
+            if not os.path.exists(picture_save_path):
+                os.makedirs(picture_save_path)
+            for image_id in image_ids:
+                image_path =picture_save_path + image_id
+                image = Image.open(image_path)
+                # 开启后在之后计算mAP可以可视化
+                # image.save("./input/images-optional/"+image_id+".jpg")
+                result,class_num = yolo.detect_image(image)
+                class_nums=class_nums+class_num
+                # image = Image.open(result)
+                print(class_nums)
+                img = cv2.cvtColor(np.array(result), cv2.COLOR_RGBA2BGRA)
+                cv2.imwrite(picture_save_path + image_id , img)
+            break
+
 
     elif mode =="video":
         capture = cv2.VideoCapture(video_path)
@@ -96,4 +123,12 @@ if __name__ =="__main__":
             capture.release()
             out.release()
             cv2.destroyAllWindows()
+
+        elif mode == "fps":
+            test_interval = 100
+            img = Image.open('img/street.jpg')
+            tact_time = yolo.get_FPS(img, test_interval)
+            print(str(tact_time) + ' seconds, ' + str(1 / tact_time) + 'FPS, @batch_size 1')
+        else:
+            raise AssertionError("Please specify the correct mode: 'predict', 'video' or 'fps'.")
 

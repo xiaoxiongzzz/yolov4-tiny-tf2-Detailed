@@ -7,6 +7,12 @@ from tensorflow.keras.layers import (BatchNormalization, Concatenate, Conv2D,
 from utils.utils import compose
 from tensorflow.keras.models import Model
 from tensorflow.keras import backend as K
+from tensorflow.keras.layers import Input
+#--------------------------------------------#
+#   该部分代码只用于看网络结构，并非测试代码
+#   map测试请看get_dr_txt.py、get_gt_txt.py
+#   和get_map.py
+#--------------------------------------------#
 
 # 注意力机制列表
 attention_block = [se_block, cbam_block, eca_block]
@@ -246,6 +252,15 @@ def yolo_head(feats, anchors, num_classes, input_shape, calc_loss=False):
     if calc_loss == True:
         return grid, feats, box_xy, box_wh
     return box_xy, box_wh, box_confidence, box_class_probs
+# 我将test.PY 整合到了网络代码里，运行这个代码可以查看网络结构和参数量。读代码更方便
+
+if __name__ == "__main__":
+    inputs = Input([416,416,3])
+    model = yolo_body(inputs,3,80)
+    model.summary()
+
+    for i, layer in enumerate(model.layers):
+        print(i, layer.name)
 
 
 
